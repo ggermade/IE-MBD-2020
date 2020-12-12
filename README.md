@@ -11,6 +11,8 @@ Programming languages & tools:
 + Looker
 + PowerBI
 + Tableau
++ Hadoop HDFS
++ Hive/HQL
 + Apache Spark
 + Spark Stream Processing
 + Apache Kafka

@@ -1,4 +1,4 @@
-#Forecasting Time Series: Tools
+# Forecasting Time Series: Tools
 This class was heavily based on R and RStudio, with some reliance on Excel.
 
 # Forecasting Time Series Visual Guide

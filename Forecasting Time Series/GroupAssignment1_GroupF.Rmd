@@ -1,0 +1,869 @@
+---
+title: "Forecasting Time Series Homework 1"
+author: "Guillermo Germade, Eun Suk Hong, Roberto Picon, Allison Black, Vasileios Sagiannos, Deborah Cheng (ungraded student)"
+date: "September 9, 2020"
+output:
+    html_document: 
+    toc: true
+editor_options: 
+  chunk_output_type: console
+---
+
+#Preparations
+##Load libraries
+```{r setup, include=FALSE}
+library(fBasics)
+library(forecast)
+```
+
+##Set directory and load data
+```{r}
+#dir <- dirname(rstudioapi::getActiveDocumentContext()$path)
+setwd("C:/Users/Guillermo Germade/Downloads/")
+data <- read.csv("Homework_1_DATA.csv", sep = ';', dec = ",")
+```
+
+##Separate series
+
+It is known that there are no NA values in between the series. However, some series are longer than others. Therefore, we omitted blank values using is.na:
+```{r}
+series1 <- data[!is.na(data[,1]), 1]
+series2 <- data[!is.na(data[,2]), 2]
+series3 <- data[!is.na(data[,3]), 3]
+series4 <- data[!is.na(data[,4]), 4]
+series5 <- data[!is.na(data[,5]), 5]
+series6 <- data[!is.na(data[,6]), 6]
+series7 <- data[!is.na(data[,7]), 7]
+```
+
+#Series 1
+```{r}
+y <- series1
+```
+
+##Plot series, ACF and PACF
+```{r}
+par(mar = c(4, 4, 4, 4))
+par(mfrow = c(3, 1))
+ts.plot(y)
+acf(y)
+pacf(y)
+```
+
+We can see that the mean is constant and at zero, and the variance is somewhat constant.
+Per the ACF and PACF graph, it does not look like the data is correlated to any significance.
+
+##Statistical Calculations
+```{r}
+mean(y)
+sd(y)
+skewness(y)
+kurtosis(y, method = "moment")
+```
+
+##Box-Test to Test for White Noise
+```{r}
+Box.test(y, lag = 20, type = "Ljung")
+```
+
+Hypothesis:
+H0 = uncorrelated data
+H1 = correlated data
+
+As the p-value > 0.05, we cannot reject H0, the box test indicates that the data is uncorrelated.
+
+The criteria for white noise are:
+Mean is 0, met
+Variance is constant, met
+ACF and PACF = 0, met, per box test
+
+Therefore, this series is white noise.
+
+##Gaussian White Noise
+
+###Normal Distribution
+
+####Check for Normal Distribution Graphically
+```{r}
+par(mfrow=c(1,1))
+hist(y,prob=T,ylim=c(0,0.6),xlim=c(mean(y)-3*sd(y),mean(y)+3*sd(y)),col="red")
+lines(density(y),lwd=2)
+mu<-mean(y)
+sigma<-sd(y)
+x<-seq(mu-3*sigma,mu+3*sigma,length=100)
+yy<-dnorm(x,mu,sigma)
+lines(x,yy,lwd=2,col="blue")
+```
+
+####Check for Normal Distribution Statistically
+```{r}
+shapiro.test(y)
+```
+
+Hypothesis:
+H0 = normally distributed data
+H1 = not normally distributed data
+
+The p-value < 0.05; therefore, we reject H0, so it is not normal distribution.
+
+Since it is not normally distributed, it cannot be Gaussian White Noise.
+
+##Strict White Noise
+
+Although the data is not Gaussian White Noise, it doesn't mean that it's automatically not strict white noise.
+
+```{r}
+par(mar = c(4, 4, 4, 4))
+par(mfrow = c(3, 1))
+ts.plot(y^2)
+acf(y^2)
+pacf(y^2)
+```
+
+Graphically, we can see that the mean is zero and variance is constant. There are no significant lags in either ACF or PACF. Therefore, graphically, it should be iid. However, we have only confirmed that the data is quadratically independent, so we cannot be sure the the same holds true for y^3, y^4, y^5... ad infinitum. 
+
+```{r}
+Box.test(y^2, lag = 20, type = 'Ljung')
+```
+
+Hypothesis:
+H0 = uncorrelated data (independent)
+H1 = correlated data (not independent)
+
+The p-value > 0.05; therefore, we do not have enough evidence to reject H0 and thus y^2 is quadratically independent.
+
+##Conclusion for Series 1
+
+We would not need a linear model to predict this data as the data is white noise. We would use the mean of the data (zero) as the prediction.
+We would not need a quadratic model, as the data seems to be Strict White Noise. We cannot be absolutely certain it is SWN because we would have to check whether it is independent to further degrees past quadratic (y^2) (i.e., checking for independence of y^3, y^4, ..., y^k where k = infinity). Therefore SWN = we don't know.
+
+
+#Series 2
+```{r}
+y <- series2
+```
+
+##Plot series, ACF and PACF
+```{r}
+par(mar = c(4, 4, 4, 4))
+par(mfrow = c(3, 1))
+ts.plot(y)
+acf(y)
+pacf(y)
+```
+
+Graphically, the mean is not constant; therefore, it is not stationary. Furthermore, the lags in the ACF decrease very slowly, which is another indicator of nonstationarity.
+
+##Making the Data Stationary
+```{r}
+ndiffs(y, alpha=0.05, test=c("adf"))
+```
+
+```{r}
+z <- diff(y)
+```
+
+Take one difference.
+
+```{r}
+ndiffs(z, alpha=0.05, test=c("adf"))
+```
+
+This confirms that there are no additional differences needed to be taken.
+
+##Plot Transformed Data
+```{r}
+par(mar = c(4, 4, 4, 4))
+par(mfrow = c(3, 1))
+ts.plot(z)
+acf(z)
+pacf(z)
+```
+
+Graphically, we can see that the mean and variance are stationary. There are also no significant out of bound lags in ACF and PACF.
+
+##Statistical Calculations
+```{r}
+mean(z)
+t.test(z)
+sd(z)
+skewness(z)
+kurtosis(z, method = "moment")
+```
+
+Although the mean wasn't exactly at zero, it was close enough to zero. The T-Test confirmed that the mean is statistically zero.
+
+##Box-Test to Test for White Noise
+```{r}
+Box.test(z, lag = 20, type = "Ljung")
+```
+
+Hypothesis:
+H0 = uncorrelated data
+H1 = correlated data
+
+As the p-value > 0.05; therefore, we accept H0, so the data is uncorrelated data. This is consistent with the graphical data of ACF and PACF.
+
+The criteria for white noise are:
+Mean is 0, met
+Variance is constant, met
+ACF and PACF = 0, met
+
+Therefore, this transformed series is white noise.
+
+##Gaussian White Noise
+
+###Normal Distribution
+
+####Check for Normal Distribution Graphically
+```{r}
+par(mfrow=c(1,1))
+hist(z,prob=T,ylim=c(0,0.6),xlim=c(mean(z)-3*sd(z),mean(z)+3*sd(z)),col="red")
+lines(density(z),lwd=2)
+mu<-mean(z)
+sigma<-sd(z)
+x<-seq(mu-3*sigma,mu+3*sigma,length=100)
+zz<-dnorm(x,mu,sigma)
+lines(x,zz,lwd=2,col="blue")
+```
+
+Graphically, the transformed series is normally distributed.
+
+####Check for Normal Distribution Statistically
+```{r}
+shapiro.test(z)
+```
+
+Hypothesis:
+H0 = normally distributed data
+H1 = not normally distributed data
+
+The p-value > 0.05; therefore, we accept H0, the data is  normally distributed.
+
+Therefore, the transformed data is Gaussian White Noise.
+
+##Strict White Noise
+
+Since we have Gaussian White Noise, we have Strict White Noise. However, the following analysis is done for practice.
+
+```{r}
+par(mar = c(4, 4, 4, 4))
+par(mfrow = c(3, 1))
+ts.plot(z^2)
+acf(z^2)
+pacf(z^2)
+```
+
+Graphically, we can see that the mean and variance looks to be constant and there are no significant lags out of bound in both ACF and PACF. Therefore, graphically, it looks to be white noise.
+
+```{r}
+Box.test(z^2, lag = 20, type = 'Ljung')
+```
+
+Hypothesis:
+H0 = uncorrelated data
+H1 = correlated data
+
+The p-value > 0.05; therefore, we accept the H0. The data is uncorrelated. Therefore, the transformed series is Strict White Noise.
+
+##Conclusion for Series 2
+
+We would need a linear model for the data, since it is not White Noise. It also has a potential to have a non-linear model, as it is not Strict White Noise.
+
+The transformed data is White Noise and Strict White Noise. So the transformed data does not have a linear model, nor a potential for a non-linear model.
+
+
+#Series 3
+```{r}
+y <- series3
+```
+
+##Plot series, ACF and PACF
+```{r}
+par(mar = c(4, 4, 4, 4))
+par(mfrow = c(3, 1))
+ts.plot(y)
+acf(y)
+pacf(y)
+```
+
+Graphically, the mean is not constant. Therefore, the data is not stationary. There is obvious correlation in the ACF as we can see a decreasing pattern of out of bound lags. In the PACF, lag 2 also seemed out of bound. This series does not appear to be White Noise. The slow decrease in ACF also indicates nonstationarity.
+
+##Statistical Calculations
+```{r}
+mean(y)
+t.test(y)
+sd(y)
+skewness(y)
+kurtosis(y, method = "moment")
+```
+
+The t-test reveals the mean is not zero; therefore, the series is not White Noise.
+
+##Box-Test to Test for White Noise
+
+Although we have determined that the series is not White Noise because its mean is not zero and through graphical analysis, we will look at the box test for practice.
+
+```{r}
+Box.test(y, lag = 20, type = "Ljung")
+```
+
+Hypothesis:
+H0 = uncorrelated data
+H1 = correlated data
+
+As the p-value < 0.05, we will reject H0. Therefore, the data is correlated.
+
+The criteria for white noise are:
+Mean is 0, not met
+Variance is constant, met
+ACF and PACF = 0, not met
+
+Therefore, this series is not White Noise.
+
+We are required to check for Marginal Normal Distribution:
+
+####Check for Normal Distribution Statistically
+```{r}
+shapiro.test(y)
+```
+
+Hypothesis:
+H0 = normally distributed data
+H1 = not normally distributed data
+
+The p-value < 0.05; therefore, we reject H0, the data is not normally distributed.
+
+##Tranform the Data
+
+###Check for the Number of Differences to Take
+```{r}
+ndiffs(y, alpha = 0.05, test = c('adf'))
+```
+
+###Take the Difference and Check Again
+```{r}
+z <- diff(y)
+ndiffs(z, alpha = 0.05, test = c('adf'))
+```
+
+##Plot Tranformed Data
+
+```{r}
+par(mar = c(4, 4, 4, 4))
+par(mfrow = c(3, 1))
+ts.plot(z)
+acf(z)
+pacf(z)
+```
+
+Graphically, the mean and variance looks to be constant, hence, stationary. There is a fast decreasing pattern in the first few lags that are outside of the confidence interval in the ACF, which indicate stationarity. 
+
+Lags 2 and 3 seem to be out of bounds in the PACF. Therefore, this transformed series does not appear to be White Noise.
+
+##Statistical Tests
+
+```{r}
+mean(z)
+t.test(z)
+sd(z)
+skewness(z)
+kurtosis(z, method = "moment")
+```
+
+The mean is not statistically zero. Therefore, this tranformed series cannot be White Noise.
+
+##Box-Test to Test for White Noise
+
+Although we have determined that the series is not White Noise because its mean is not zero and through graphical analysis, we will look at the box test for practice.
+
+```{r}
+Box.test(z, lag = 20, type = "Ljung")
+```
+
+Hypothesis:
+H0 = uncorrelated data
+H1 = correlated data
+
+As the p-value < 0.05, we will reject H0. Therefore, the data is correlated.
+
+The criteria for white noise are:
+Mean is 0, not met
+Variance is constant, met
+ACF and PACF = 0, not met
+
+Therefore, this transformed series is not White Noise.
+
+##Gaussian White Noise
+
+Since the series is not White Noise, it is not Gaussian White Noise. However, we will test for Marginal Normal Distribution:
+
+####Check for Normal Distribution Statistically
+```{r}
+shapiro.test(z)
+```
+
+Hypothesis:
+H0 = normally distributed data
+H1 = not normally distributed data
+
+The p-value > 0.05; therefore, we accept H0, the data is  normally distributed.
+
+##Strict White Noise
+
+Since the series is not White Noise, it cannot be Strict White Noise.
+
+##Conclusion for Series 3
+
+Both the series and the transformed series are not White Noise, so they can be represented by linear models. There is no potential for the use of non-linear models to predict the variance, as the series is not White Noise.
+
+
+#Series 4
+```{r}
+y <- series4
+```
+
+##Plot series, ACF and PACF
+```{r}
+par(mar = c(4, 4, 4, 4))
+par(mfrow = c(3, 1))
+ts.plot(y)
+acf(y)
+pacf(y)
+```
+
+Graphically, neither the mean is not constant; therefore, it is not stationary. The ACF also has a slow decreasing pattern with multiple lags out of bounds from the confidence interval. Therefore, it is nonstationary and thus not White Noise.
+
+####Check for Marginal Normal Distribution Statistically
+```{r}
+shapiro.test(y)
+```
+
+Hypothesis:
+H0 = normally distributed data
+H1 = not normally distributed data
+
+The p-value < 0.05; therefore, we reject H0, the data is not normally distributed.
+
+
+##Transform the series
+
+###Test for Number of Differences Needed
+```{r}
+ndiffs(y, alpha = 0.05, test = c('adf'))
+```
+
+###Transform and Test Again
+```{r}
+z <- diff(diff(y))
+ndiffs(z, alpha = 0.05, test = c('adf'))
+```
+
+##Plot the Transformed Series
+```{r}
+par(mar = c(4, 4, 4, 4))
+par(mfrow = c(3, 1))
+ts.plot(z)
+acf(z)
+pacf(z)
+```
+
+Graphically, the series looks to have a constant mean and variance, so it is stationary. The ACF has a decreasing pattern in multiple lags. We will do the box test to see if the data is correlated: therefore, it cannot be White Noise.
+
+####Check for Marginal Normal Distribution Statistically
+```{r}
+shapiro.test(z)
+```
+
+ypothesis:
+H0 = normally distributed data
+H1 = not normally distributed data
+
+The p-value > 0.05; therefore, we cannot reject H0, the data is normally distributed.
+
+
+
+##Statistical Calculations
+```{r}
+mean(z)
+t.test(z)
+sd(z)
+skewness(z)
+kurtosis(z, method = "moment")
+```
+
+The mean is statistically zero.
+
+##Box-Test to Test for White Noise
+
+We have determined graphically that this is not white noise, but I'll do the statistical test to confirm.
+
+```{r}
+Box.test(y, lag = 20, type = "Ljung")
+```
+
+Hypothesis:
+H0 = uncorrelated data
+H1 = correlated data
+
+As the p-value < 0.05, so we reject H0. The transformed series data is correlated.
+
+The criteria for white noise are:
+Mean is 0, met
+Variance is constant, met
+ACF and PACF = 0, not met
+
+Therefore, this series is not White Noise.
+
+##Gaussian White Noise
+
+The transformed series is not White Noise, so it cannot be Gaussian White Noise.
+
+
+##Strict White Noise
+
+The transformed series is not White Noise, so it cannot be Strict White Noise.
+
+##Conclusion for Series 4
+
+Both the series and the transformed series can be represented by a linear model as neither are White Noise. There no need to use a non-linear model as neither are White Noise.
+
+
+#Series 5
+```{r}
+y <- series5
+```
+
+##Plot series, ACF and PACF
+```{r}
+par(mar = c(4, 4, 4, 4))
+par(mfrow = c(3, 1))
+ts.plot(y)
+acf(y)
+pacf(y)
+```
+
+Graphically, the mean and the variance are constant. Therefore, the series is stationary. There are no significant lags in the ACF, but there are potentially more than one lag out of bounds in the PACF.
+
+##Statistical Calculations
+```{r}
+mean(y)
+t.test(y)
+sd(y)
+skewness(y)
+kurtosis(y, method = "moment")
+```
+
+T-test holds that the mean is zero.
+
+##Box-Test to Test for White Noise
+```{r}
+Box.test(y, lag = 20, type = "Ljung")
+```
+
+Hypothesis:
+H0 = uncorrelated data
+H1 = correlated data
+
+As the p-value < 0.05, we reject H0. Therefore, the data is correlated.
+
+The criteria for white noise are:
+Mean is 0, met
+Variance is constant, met
+ACF and PACF = 0, not met
+
+Therefore, this series is not White Noise.
+
+##Gaussian White Noise
+
+Since the data is not White Noise, it cannot be Gaussian White Noise. But I'll go through the tests for practice.
+
+###Normal Distribution
+
+####Check for Normal Distribution Graphically
+```{r}
+par(mfrow=c(1,1))
+hist(y,prob=T,ylim=c(0,0.7),xlim=c(mean(y)-3*sd(y),mean(y)+3*sd(y)),col="red")
+lines(density(y),lwd=2)
+mu<-mean(y)
+sigma<-sd(y)
+x<-seq(mu-3*sigma,mu+3*sigma,length=100)
+yy<-dnorm(x,mu,sigma)
+lines(x,yy,lwd=2,col="blue")
+```
+
+Graphically, the black line (actual) deviates from the blue line (what normalized distribution would look like) at several points. So the data may not be normally distributed.
+
+####Check for Normal Distribution Statistically
+```{r}
+shapiro.test(y)
+```
+
+Hypothesis:
+H0 = normally distributed data
+H1 = not normally distributed data
+
+The p-value < 0.05; therefore, the data is not normally distributed.
+
+Gaussian White Noise criteria:
+white noise = yes, not met
+normally distributed data = yes, not met
+
+Therefore, the data is not Gaussian White Noise.
+
+##Strict White Noise
+
+Since the data is not White Noise, it cannot be Strict White Noise. But for practice, I'll go through the statistical tests.
+
+```{r}
+par(mar = c(4, 4, 4, 4))
+par(mfrow = c(3, 1))
+ts.plot(y^2)
+acf(y^2)
+pacf(y^2)
+```
+
+Graphically, we can see that the mean and variance are relatively constant. There are multiple lags that are out of bounds of the confidence interval in both the ACF and PACF. Therefore, it cannot be White Noise because the data is not quadratically independent.
+
+```{r}
+Box.test(y^2, lag = 20, type = 'Ljung')
+```
+
+Hypothesis:
+H0 = uncorrelated data
+H1 = correlated data
+
+The p-value < 0.05, so we reject H0. The data is correlated.
+
+Strict White Noise criteria:
+white noise, not met
+gaussian white noise, not met
+
+Since it is not White Noise, it cannot be Strict White Noise.
+
+##Conclusion for Series 5
+
+The series can be represented by a linear model because it is not White Noise. There is no need for a non-linear model as the data is not White Noise.
+
+
+#Series 6
+```{r}
+y <- series6
+```
+
+##Plot series, ACF and PACF
+```{r}
+par(mar = c(4, 4, 4, 4))
+par(mfrow = c(3, 1))
+ts.plot(y)
+acf(y)
+pacf(y)
+```
+
+Graphically, the mean and variance seemed constant. Therefore, it is stationary. There is a decreasing pattern of out of bound lags in the ACF, so this series should not be White Noise.
+
+##Statistical Calculations
+```{r}
+mean(y)
+t.test(y)
+sd(y)
+skewness(y)
+kurtosis(y, method = "moment")
+```
+
+The mean is statistically zero.
+
+##Box-Test to Test for White Noise
+```{r}
+Box.test(y, lag = 20, type = "Ljung")
+```
+
+Hypothesis:
+H0 = uncorrelated data
+H1 = correlated data
+
+As the p-value < 0.05, so we reject H0. The data is correlated.
+
+The criteria for white noise are:
+Mean is 0, yes
+Variance is constant, yes
+ACF and PACF = 0, no
+
+Therefore, this series is not White Noise.
+
+##Gaussian White Noise
+
+Since the series is not White Noise, it cannot be Gaussian White Noise.
+
+
+##Strict White Noise
+
+Since the series is not White Noise, it cannot be Strict White Noise.
+
+###Normal Distribution
+
+####Check for Marginal Normal Distribution Graphically
+```{r}
+par(mfrow=c(1,1))
+hist(y,prob=T,ylim=c(0,0.7),xlim=c(mean(y)-3*sd(y),mean(y)+3*sd(y)),col="red")
+lines(density(y),lwd=2)
+mu<-mean(y)
+sigma<-sd(y)
+x<-seq(mu-3*sigma,mu+3*sigma,length=100)
+yy<-dnorm(x,mu,sigma)
+lines(x,yy,lwd=2,col="blue")
+```
+
+Graphically, the black line (actual) deviates from the blue line (what normalized distribution would look like) at several points. So the data may not be normally distributed.
+
+####Check for Marginal Normal Distribution Statistically
+```{r}
+shapiro.test(y)
+```
+
+Hypothesis:
+H0 = normally distributed data
+H1 = not normally distributed data
+
+The p-value < 0.05; therefore, the data is not normally distributed.
+
+##Conclusion for Series 6
+
+The series can be represented by a linear model, since it is not White Noise. It does not need a non-linear model, since it is not White Noise.
+
+
+#Series 7
+```{r}
+y <- series7
+```
+
+##Plot series, ACF and PACF
+```{r}
+par(mar = c(4, 4, 4, 4))
+par(mfrow = c(3, 1))
+ts.plot(y)
+acf(y)
+pacf(y)
+```
+
+Graphically, the mean does not seem constant. So the data is not stationary. There is also a clear pattern of lags out of bound in the ACF. So the data cannot be White Noise.
+
+###Normal Distribution
+
+####Check for Marginal Normal Distribution Graphically
+```{r}
+par(mfrow=c(1,1))
+hist(y,prob=T,ylim=c(0,0.7),xlim=c(mean(y)-3*sd(y),mean(y)+3*sd(y)),col="red")
+lines(density(y),lwd=2)
+mu<-mean(y)
+sigma<-sd(y)
+x<-seq(mu-3*sigma,mu+3*sigma,length=100)
+yy<-dnorm(x,mu,sigma)
+lines(x,yy,lwd=2,col="blue")
+```
+
+Graphically, the black line (actual) deviates from the blue line (what normalized distribution would look like) at several points. So the data may not be normally distributed.
+
+####Check for Marginal Normal Distribution Statistically
+```{r}
+shapiro.test(y)
+```
+
+Hypothesis:
+H0 = normally distributed data
+H1 = not normally distributed data
+
+The p-value < 0.05; therefore, the data is not normally distributed.
+
+##Transform the Data
+
+###Test for Number of Differences to Take
+```{r}
+ndiffs(y, alpha = 0.05, test = 'adf')
+```
+
+###Take Difference and Test Again
+```{r}
+z <- diff(y)
+ndiffs(z, alpha = 0.05, test = 'adf')
+```
+
+##Plot Transformed Series
+```{r}
+par(mar = c(4, 4, 4, 4))
+par(mfrow = c(3, 1))
+ts.plot(z)
+acf(z)
+pacf(z)
+```
+
+Graphically, the mean and variance look to be constant. There are no lags out of bounds for the ACF, but a few potentially significant lags out of bound for the PACF. So it may not be White Noise. Will require statistical test to determine.
+
+##Statistical Calculations
+```{r}
+mean(z)
+t.test(z)
+sd(z)
+skewness(z)
+kurtosis(z, method = "moment")
+```
+
+The mean is statistically zero.
+
+##Box-Test to Test for White Noise
+```{r}
+Box.test(z, lag = 20, type = "Ljung")
+```
+
+Hypothesis:
+H0 = uncorrelated data
+H1 = correlated data
+
+As the p-value < 0.05, so we reject H0. Therefore, the data is correlated.
+
+The criteria for white noise are:
+Mean is 0, yes
+Variance is constant, yes
+ACF and PACF = 0, no
+
+Therefore, this series is not White Noise.
+
+##Gaussian White Noise
+
+Since the data is not White Noise, it cannot be Gaussian White Noise.
+
+
+##Strict White Noise
+
+Since the data is not White Noise, it cannot be Strict White Noise.
+
+###Normal Distribution
+
+####Check for Marginal Normal Distribution Graphically
+```{r}
+par(mfrow=c(1,1))
+hist(z,prob=T,ylim=c(0,0.7),xlim=c(mean(z)-3*sd(z),mean(z)+3*sd(z)),col="red")
+lines(density(z),lwd=2)
+mu<-mean(z)
+sigma<-sd(z)
+x<-seq(mu-3*sigma,mu+3*sigma,length=100)
+yy<-dnorm(x,mu,sigma)
+lines(x,yy,lwd=2,col="blue")
+```
+
+Graphically, the black line (actual) deviates from the blue line (what normalized distribution would look like) at several points. So the data may not be normally distributed.
+
+####Check for Marginal Normal Distribution Statistically
+```{r}
+shapiro.test(z)
+```
+
+Hypothesis:
+H0 = normally distributed data
+H1 = not normally distributed data
+
+The p-value < 0.05; therefore, the data is not normally distributed.
+
+##Conclusion for Series 7
+
+Both the series and the transformed series can be represented by a linear model since neither are White Noise. There is no potential for non-linear models since neither are White Noise.

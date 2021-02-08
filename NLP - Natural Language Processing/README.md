@@ -1,4 +1,4 @@
-# Topic Modelling
+# iCanHelp - Topic Modelling NLP Project
 
 In Natural Language Processing, Topic Modelling is an Unsupervised Learning task dealing with finding similarities of documents according to common tokens.
 
